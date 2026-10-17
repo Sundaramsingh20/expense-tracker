@@ -15,20 +15,6 @@ monthly chart, budget alerts and CSV export.
 - Export all expenses to CSV
 - Each user can only see and delete their own expenses
 
-## How to run
-1. Install Python 3.9 or newer.
-2. Open a terminal in this folder and install Flask:
-
-       pip install -r requirements.txt
-
-3. Start the app:
-
-       python app.py
-
-4. Open http://127.0.0.1:5000 in your browser, create an account and log in.
-
-The database file `expenses.db` is created automatically on first run.
-(The chart needs internet because Chart.js loads from a CDN.)
 
 ## Project structure
     app.py              Flask backend: routes, database, login logic
