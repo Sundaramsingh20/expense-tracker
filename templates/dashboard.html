@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Expense Tracker{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <h2>Dashboard</h2>
+    <form method="GET" action="{{ url_for('dashboard') }}" class="month-form">
+        <label for="month">Month</label>
+        <input type="month" id="month" name="month" value="{{ month }}" onchange="this.form.submit()">
+    </form>
+</div>
+
+<!-- Summary cards -->
+<div class="grid grid-3">
+    <div class="card stat">
+        <span class="stat-label">Total spent this month</span>
+        <span class="stat-value">₹{{ '%.2f'|format(total) }}</span>
+    </div>
+    <div class="card stat">
+        <span class="stat-label">Number of expenses</span>
+        <span class="stat-value">{{ expenses|length }}</span>
+    </div>
+    <div class="card stat">
+        <span class="stat-label">Monthly budget</span>
+        <span class="stat-value">{% if budget > 0 %}₹{{ '%.2f'|format(budget) }}{% else %}Not set{% endif %}</span>
+    </div>
+</div>
+
+<!-- Budget progress / alert -->
+{% if budget > 0 %}
+<div class="card">
+    <div class="budget-row">
+        <strong>Budget used: {{ percent_used }}%</strong>
+        <span class="muted">₹{{ '%.2f'|format(total) }} of ₹{{ '%.2f'|format(budget) }}</span>
+    </div>
+    <div class="progress">
+        <div class="progress-bar
+            {% if percent_used >= 100 %}danger{% elif percent_used >= 80 %}warn{% endif %}"
+             style="width: {{ [percent_used, 100]|min }}%"></div>
+    </div>
+    {% if percent_used >= 100 %}
+        <p class="alert alert-danger">⚠️ You have exceeded your monthly budget by ₹{{ '%.2f'|format(total - budget) }}.</p>
+    {% elif percent_used >= 80 %}
+        <p class="alert alert-warn">⚠️ Careful! You have used {{ percent_used }}% of your budget.</p>
+    {% endif %}
+</div>
+{% endif %}
+
+<div class="grid grid-2">
+    <!-- Add expense form -->
+    <div class="card">
+        <h3>Add expense</h3>
+        <form method="POST" action="{{ url_for('add_expense') }}" id="expense-form">
+            <label for="title">Title</label>
+            <input type="text" id="title" name="title" placeholder="e.g. Lunch at canteen" required>
+
+            <label for="amount">Amount (₹)</label>
+            <input type="number" id="amount" name="amount" step="0.01" min="0.01" required>
+
+            <label for="category">Category</label>
+            <select id="category" name="category">
+                {% for c in categories %}
+                <option value="{{ c }}">{{ c }}</option>
+                {% endfor %}
+            </select>
+
+            <label for="expense_date">Date</label>
+            <input type="date" id="expense_date" name="expense_date" value="{{ today }}" max="{{ today }}" required>
+
+            <button type="submit" class="btn btn-primary btn-block">Add expense</button>
+        </form>
+
+        <hr>
+        <h3>Set monthly budget</h3>
+        <form method="POST" action="{{ url_for('set_budget') }}" class="inline-form">
+            <input type="number" name="budget" step="1" min="0" placeholder="e.g. 5000" value="{{ budget|int if budget else '' }}" required>
+            <button type="submit" class="btn btn-outline">Save</button>
+        </form>
+    </div>
+
+    <!-- Chart -->
+    <div class="card">
+        <h3>Spending by category</h3>
+        {% if chart_values %}
+            <div class="chart-wrap"><canvas id="categoryChart"></canvas></div>
+        {% else %}
+            <p class="muted empty">No expenses this month yet. Add one to see the chart.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Expense table -->
+<div class="card">
+    <div class="table-head">
+        <h3>Expenses</h3>
+        <div class="table-tools">
+            <input type="text" id="search" placeholder="Search by title or category...">
+            <a class="btn btn-outline btn-small" href="{{ url_for('export_csv') }}">⬇ Export CSV</a>
+        </div>
+    </div>
+
+    {% if expenses %}
+    <div class="table-scroll">
+        <table id="expense-table">
+            <thead>
+                <tr><th>Date</th><th>Title</th><th>Category</th><th class="num">Amount</th><th></th></tr>
+            </thead>
+            <tbody>
+                {% for e in expenses %}
+                <tr>
+                    <td>{{ e['expense_date'] }}</td>
+                    <td>{{ e['title'] }}</td>
+                    <td><span class="tag">{{ e['category'] }}</span></td>
+                    <td class="num">₹{{ '%.2f'|format(e['amount']) }}</td>
+                    <td class="num">
+                        <form method="POST" action="{{ url_for('delete_expense', expense_id=e['id']) }}"
+                              class="delete-form">
+                            <button type="submit" class="btn btn-danger btn-small">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+        <p class="muted empty">No expenses for this month.</p>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if chart_values %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+    // Data comes from Flask (Python) -> JSON -> JavaScript
+    drawCategoryChart({{ chart_labels|tojson }}, {{ chart_values|tojson }});
+</script>
+{% endif %}
+{% endblock %}
